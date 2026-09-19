@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wildfireguardian-assisted-dispatch"
+version = "0.1.0"
+description = "Mathematics and computational foundation for assisted wildfire evacuation dispatch (synthetic phase)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "WildfireGuardian Assisted Dispatch research" }]
+keywords = ["wildfire", "evacuation", "dispatch", "time-dependent-routing", "synthetic"]
+
+# The core library is intentionally dependency-light: it is a research kernel and
+# must stay auditable.  Everything below is stdlib-only except PyYAML, which is
+# only used by the config loader (JSON configs work without it).
+dependencies = [
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+# Tabular sweep output (parquet).  Without these the CLI falls back to CSV.
+tables = ["pyarrow>=14"]
+# Feasibility plots.  Without these the CLI emits an ASCII feasibility strip.
+plots = ["matplotlib>=3.7"]
+dev = ["pytest>=7", "pyarrow>=14", "matplotlib>=3.7"]
+
+[project.scripts]
+wg-dispatch = "wildfireguardian_assisted_dispatch.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

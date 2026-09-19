@@ -1,0 +1,41 @@
+# A fully-specified study: no fixture shortcut, everything written out.
+#
+# This is the same arithmetic as fixture A, expressed declaratively:
+#   t + 10 (ingress) + 5 (pickup) + 10 (egress) <= 40  =>  t <= 15
+#
+# Run it with:
+#   wg-dispatch sweep experiments/configs/ridge_study.yaml
+name: ridge-study
+
+network:
+  name: ridge
+  nodes:
+    - {id: base,    kind: base,        label: responder base}
+    - {id: home,    kind: residence,   label: mobility-limited resident}
+    - {id: shelter, kind: destination, label: evacuation centre}
+  roads:
+    - {u: base, v: home,    travel_time: 10}
+    - {u: home, v: shelter, travel_time: 10, corridor: egress}
+
+mission:
+  name: ridge-mission
+  base: base
+  resident: home
+  destinations:
+    - {node: shelter, min_safe_dwell: 0}
+  pickup: {duration: 5, profile: p05}
+  policy:
+    admission: full_interval     # never enter a segment we cannot clear
+    waiting: prohibited          # the only implemented policy in phase 1
+    horizon: 120
+
+hazards:
+  scenarios:
+    - name: coherent
+      weight: 1.0
+      description: the single egress corridor is lost at t = 40
+      edges:
+        egress: {closes_at: 40}
+
+sweep: {start: 0, stop: 30, step: 1, threshold: 1.0}
+dispatch_time: 0

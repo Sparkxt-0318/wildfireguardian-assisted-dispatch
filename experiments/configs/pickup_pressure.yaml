@@ -1,0 +1,14 @@
+# Fixture D with a longer pickup, via the fixture shortcut plus an override.
+#
+#   t <= 30 - p, so a 15-minute on-scene time halves the dispatch envelope
+#   relative to a 2-minute one (t <= 15 instead of t <= 28).
+#
+# Run it with:
+#   wg-dispatch pickup-sweep experiments/configs/pickup_pressure.yaml
+#
+# The four durations are SCENARIO PARAMETERS. They are not validated medical or
+# triage categories (docs/ASSUMPTIONS.md A-004).
+name: pickup-pressure
+fixture: d
+pickup: {duration: 15, profile: p15}
+sweep: {start: 0, stop: 40, step: 1, threshold: 1.0}

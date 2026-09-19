@@ -1,0 +1,41 @@
+# The non-monotonic study, written out rather than taken from fixture F.
+#
+# The egress corridor is safe on [0, 12], unsafe while a flare front crosses it,
+# safe again from t = 18, and finally lost at t = 25:
+#
+#   arrive home t+5, pickup ends t+7, egress occupies [t+7, t+12]
+#     fits in [0, 12]  ->  t <= 0
+#     fits in [18, 25] ->  11 <= t <= 13
+#
+#   T = {0} U [11, 13]   -- so sup T = 13 is NOT a latest-dispatch recommendation
+#
+# Run it with:
+#   wg-dispatch sweep experiments/configs/reopening_corridor.yaml --refine
+name: reopening-corridor
+
+network:
+  name: reopening
+  nodes:
+    - {id: base,    kind: base}
+    - {id: home,    kind: residence}
+    - {id: shelter, kind: destination}
+  roads:
+    - {u: base, v: home,    travel_time: 5}
+    - {u: home, v: shelter, travel_time: 5, corridor: egress}
+
+mission:
+  base: base
+  resident: home
+  destinations: [{node: shelter}]
+  pickup: {duration: 2, profile: p02}
+  policy: {horizon: 120}
+
+hazards:
+  scenarios:
+    - name: reopening
+      weight: 1.0
+      description: a flare front crosses the corridor between t = 12 and t = 18
+      edges:
+        egress: {windows: [[0, 12], [18, 25]]}
+
+sweep: {start: 0, stop: 20, step: 1, threshold: 1.0}

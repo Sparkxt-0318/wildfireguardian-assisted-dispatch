@@ -77,11 +77,13 @@ def ascii_strip(feasible: FeasibleDispatchSet, *, width: int = 72,
 
     summary = [f"  windows : {feasible.format_intervals() or 'empty'}",
                f"  monotone: {feasible.is_monotone}"]
-    if feasible.is_monotone and not feasible.is_empty:
-        summary.append(f"  t_dagger: {feasible.supremum:g}")
-    elif not feasible.is_empty:
-        summary.append(f"  sup T   : {feasible.supremum:g} "
-                       "(NOT a valid latest-dispatch summary)")
+    if not feasible.is_empty:
+        if feasible.is_prefix:
+            summary.append(f"  dispatch-by deadline (sampled): "
+                           f"{feasible.supremum:g}")
+        else:
+            summary.append(f"  last feasible dispatch instant (sampled): "
+                           f"{feasible.supremum:g}  - NOT a deadline")
     summary += [f"  warning : {w}" for w in feasible.warnings]
 
     return FeasibilityStrip(
@@ -145,16 +147,17 @@ def plot_feasibility(grid: Sequence[float], p_success: Sequence[float],
     top.set_axisbelow(True)
     top.set_title(title, color=INK_PRIMARY, fontsize=12, loc="left", pad=52)
     top.annotate(
-        f"feasible dispatch set T = {feasible.format_intervals() or 'empty'}"
+        f"SAMPLED feasible dispatch set T = "
+        f"{feasible.format_intervals() or 'empty'}"
         f"   (q = {feasible.threshold:g}, grid step "
-        f"{feasible.resolution:g} min)",
+        f"{feasible.resolution:g} min - narrower windows are invisible)",
         xy=(0.0, 1.02), xycoords="axes fraction", ha="left", va="bottom",
         color=INK_SECONDARY, fontsize=9,
     )
     if not feasible.is_monotone:
         top.annotate(
-            "feasibility is regained after being lost - no single latest "
-            "dispatch time describes this set",
+            "feasibility is regained after being lost - this set has no "
+            "dispatch-by deadline",
             xy=(0.0, 1.12), xycoords="axes fraction", ha="left", va="bottom",
             color=INFEASIBLE_COLOR, fontsize=9,
         )

@@ -65,8 +65,10 @@ reported honestly.
 **Mission** — the whole thing: base → resident → pickup → safe destination.
 
 **Monotone (feasibility)** — feasibility, once lost as `t` increases, is never
-regained on the studied grid. Only then is a single latest dispatch time a valid
-summary (D-006).
+regained on the studied grid. Necessary but *not sufficient* for a deadline: a
+set whose single component starts after the beginning of the studied range is
+non-monotone on that grid and still has no hole in it (fixture `n_resolved`).
+The predicate that licenses a deadline is `is_dispatch_by_deadline` (D-019).
 
 **`P_success(t)`** — the total weight of the scenarios in which the *whole*
 mission succeeds when dispatched at `t`. A sum over scenarios, never a product
@@ -91,8 +93,40 @@ the full-interval assessment is built on.
 
 **Simple path** — a leg that visits no node twice. The default (D-005).
 
-**`sup T` / `t†`** — the supremum of the feasible set. A true statement about the
-supremum; a valid *recommendation* only when `T` is monotone.
+**Last feasible dispatch instant** — `sup 𝒯_q`. Because `𝒯_q` is closed it is
+*attained*: dispatching at exactly that instant works. On its own it says
+nothing about earlier instants, so it is **not** a deadline.
+
+**Dispatch-by deadline** — the value `X` for which "dispatch any time up to `X`"
+is true. Defined only when `𝒯_q` is a single component reaching the start of the
+studied range; `dispatch_by_deadline()` refuses otherwise (D-019). For every
+other shape, say *feasible dispatch set*, *feasible dispatch windows*, or *last
+feasible dispatch instant*, and say which you mean.
+
+**Connected components** — the maximal closed intervals `[a_k, b_k]` whose union
+is `𝒯_q`. The exact solver reports them directly; `K > 1` is precisely the case
+in which no deadline exists.
+
+**Exact (interval) solver** — `feasibility/exact.py`. Computes `𝒯_q` in closed
+form by interval arithmetic over the finitely many combinatorial plans, with no
+time discretization, under conditions it checks rather than assumes (D-018).
+
+**Oracle feasibility envelope** / **physical feasibility upper bound** — the
+approved names for what this repository computes: what was physically possible
+given complete knowledge of the scenario's future. Never "operating envelope"
+(A-008, `ORACLE_FEASIBILITY_LIMIT.md`).
+
+**Reference oracle** — `validation/brute_force.py`. A deliberately slow second
+implementation that enumerates plans by hand and shares no search, timing or
+hazard-assessment code with the main solver (D-020).
+
+**Mutation testing** — deliberately introducing a defect into the real source to
+check that the suite rejects it. A *killed* mutant was caught; a *survivor* is a
+hole in the suite (D-022, `reports/MUTATION_TESTING.md`).
+
+**Temporal resolution** — the grid step of a dispatch sweep. Sampled results are
+accurate only to it, and a window narrower than it can be missed entirely
+(`TEMPORAL_RESOLUTION.md`).
 
 **Time-expanded state** — a `(node, arrival time)` pair. The search enumerates
 these completely rather than settling each node once, because earliest arrival

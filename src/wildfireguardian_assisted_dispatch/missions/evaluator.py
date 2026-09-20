@@ -49,6 +49,19 @@ from .result import (
 from .spec import Destination, MissionSpec
 
 
+class ArrivalBranchBudgetExceeded(RuntimeError):
+    """More distinct resident-arrival times exist than the evaluator may branch on.
+
+    Raised rather than silently truncated.  Because an earlier arrival does not
+    dominate a later one under reopening hazards, dropping arrival times can
+    turn a feasible mission into an infeasible one - the same class of silent
+    failure that :class:`~...search.time_expanded.SearchBudgetExceeded` exists
+    to prevent (D-013).  Raise
+    :attr:`~.policy.MissionPolicy.max_resident_arrivals` if the branching is
+    genuinely needed.
+    """
+
+
 @dataclass(frozen=True)
 class _Plan:
     """A complete candidate mission, before auditing."""
@@ -144,10 +157,19 @@ def evaluate_mission(spec: MissionSpec, dispatch_time: float,
             FailureReason.RESIDENT_NODE_UNSAFE_ON_ARRIVAL,
         ))
 
+    if len(resident_arrivals) > policy.max_resident_arrivals:
+        raise ArrivalBranchBudgetExceeded(
+            f"{len(resident_arrivals)} distinct arrival times at "
+            f"{spec.resident!r} exceed max_resident_arrivals="
+            f"{policy.max_resident_arrivals}. Truncating them could hide a "
+            "feasible mission, because a later arrival is not dominated by an "
+            "earlier one under reopening hazards."
+        )
+
     plans: list[_Plan] = []
     failures: list[_Failure] = []
 
-    for arrival in resident_arrivals[: policy.max_resident_arrivals]:
+    for arrival in resident_arrivals:
         ingress_route = route_from_arrival(spec.base, dispatch_time, arrival)
         pickup_start, pickup_end = spec.pickup.window(arrival.time)
 
@@ -447,4 +469,5 @@ def evaluate_over_ensemble(spec: MissionSpec, dispatch_time: float,
     return tuple(evaluate_mission(spec, dispatch_time, s) for s in ensemble)
 
 
-__all__ = ["evaluate_mission", "evaluate_over_ensemble"]
+__all__ = ["evaluate_mission", "evaluate_over_ensemble",
+           "ArrivalBranchBudgetExceeded"]

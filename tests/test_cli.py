@@ -45,7 +45,10 @@ def test_sweep_prints_the_strip_and_the_monotonicity_warning(capsys):
     out = capsys.readouterr().out
     assert "#..........###" in out
     assert "NOT monotone" in out
-    assert "NOT a valid latest-dispatch summary" in out
+    assert "NOT a dispatch-by deadline" in out
+    # The exact, discretization-free set is reported alongside the samples.
+    assert "no temporal discretization" in out
+    assert "[0] U [11, 13]" in out
 
 
 def test_sweep_writes_a_table(tmp_path, capsys):
@@ -100,7 +103,36 @@ def test_plot_feasibility_writes_a_png(tmp_path):
 
 def test_fixtures_check_passes(capsys):
     assert main(["fixtures", "--check"]) == 0
-    assert "fixtures match their hand calculations" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "agree with their hand calculations, the exact solver and the " \
+           "independent reference oracle" in out
+    # All three comparisons are reported per fixture, not just the sampled one.
+    assert "sampled   expected:" in out
+    assert "exact     expected:" in out
+
+
+def test_sweep_reports_the_exact_set_when_the_grid_misses_it(capsys):
+    """Fixture n: the grid finds nothing, the exact solver finds the window."""
+    assert main(["sweep", "n"]) == 0
+    out = capsys.readouterr().out
+    assert "windows : []" in out
+    assert "NOT the same as the feasible set being empty" in out
+    assert "[11.3, 11.4]" in out
+    assert "the window is narrower than the grid step" in out
+
+
+def test_sweep_can_be_asked_for_the_sampled_view_only(capsys):
+    assert main(["sweep", "n", "--no-exact"]) == 0
+    out = capsys.readouterr().out
+    assert "no temporal discretization" not in out
+    assert "SAMPLED at" in out
+
+
+def test_sweep_says_so_when_the_exact_solver_does_not_apply(capsys):
+    assert main(["sweep", "g_myopic"]) == 0
+    out = capsys.readouterr().out
+    assert "EXACT SOLVER NOT APPLICABLE" in out
+    assert "entry_only" in out
 
 
 def test_fixtures_show_prints_the_hand_calculation(capsys):

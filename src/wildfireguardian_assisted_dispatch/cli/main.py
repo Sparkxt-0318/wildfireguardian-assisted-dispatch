@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Sequence
 
 from ..feasibility.dispatch import FeasibleDispatchSet, sweep_dispatch_times
+from ..feasibility.exact import ExactSolverUnavailable, exact_feasible_set
 from ..feasibility.refine import refine_transitions
 from ..feasibility.sensitivity import sweep_pickup_durations
 from ..fixtures import FIXTURES, load as load_fixture
@@ -98,8 +99,24 @@ def cmd_sweep(args: argparse.Namespace) -> int:
     sweep = sweep_dispatch_times(study.spec, study.ensemble, study.grid)
     feasible = sweep.feasible_set(threshold)
 
-    print(ascii_strip(feasible, title=f"feasible dispatch set - {study.name}").render())
+    print(ascii_strip(feasible, title=f"sampled feasible dispatch set - "
+                                     f"{study.name}").render())
     print()
+
+    if not args.no_exact:
+        try:
+            exact = exact_feasible_set(
+                study.spec, study.ensemble,
+                (study.grid[0], study.grid[-1]), threshold=threshold)
+        except ExactSolverUnavailable as exc:
+            print("EXACT SOLVER NOT APPLICABLE")
+            print(f"  {exc}")
+            print("  The sampled windows above are therefore the only available "
+                  "answer, and they are accurate only to the grid resolution.")
+        else:
+            print(exact.describe())
+            _cross_check(feasible, exact)
+        print()
 
     if args.refine:
         transitions = refine_transitions(study.spec, study.ensemble, sweep,
@@ -118,6 +135,29 @@ def cmd_sweep(args: argparse.Namespace) -> int:
         written = write_rows(rows, args.out)
         print(written.describe())
     return 0
+
+
+def _cross_check(sampled: FeasibleDispatchSet, exact) -> None:
+    """Report any disagreement between the sampled and exact feasible sets.
+
+    Disagreement is expected whenever a feature is narrower than the grid step;
+    it is reported, never smoothed over.
+    """
+    mismatches = [t for t, flag in zip(sampled.grid, sampled.flags)
+                  if flag != exact.contains(t)]
+    if mismatches:
+        print(f"  DISAGREEMENT at {len(mismatches)} sampled point(s), e.g. "
+              f"t={mismatches[0]:g}: this is a solver defect, not a resolution "
+              "artefact, because both methods were asked about the same instant")
+        return
+    sampled_measure = sum(hi - lo for lo, hi in sampled.intervals)
+    exact_measure = exact.interval_set.measure
+    if exact_measure > sampled_measure + sampled.resolution + 1e-9:
+        print("  note: the exact set is larger than the sampled one; the grid "
+              "is missing feasible time that lies between its samples")
+    elif not sampled.intervals and not exact.is_empty:
+        print("  note: the grid found NO feasible dispatch time, but the exact "
+              "set is non-empty - the window is narrower than the grid step")
 
 
 def cmd_pickup_sweep(args: argparse.Namespace) -> int:
@@ -161,7 +201,7 @@ def cmd_plot(args: argparse.Namespace) -> int:
         resolution=resolution,
     )
 
-    print(ascii_strip(feasible, title=f"feasible dispatch set - "
+    print(ascii_strip(feasible, title=f"sampled feasible dispatch set - "
                                       f"{Path(args.results).name}").render())
 
     if args.out:
@@ -170,8 +210,9 @@ def cmd_plot(args: argparse.Namespace) -> int:
                   "install the 'plots' extra. The strip above is the same "
                   "information.", file=sys.stderr)
             return 0
-        path = plot_feasibility(grid, values, feasible, args.out,
-                                title=args.title or "Dispatch feasibility")
+        path = plot_feasibility(
+            grid, values, feasible, args.out,
+            title=args.title or "Oracle dispatch feasibility (sampled)")
         print(f"\nwrote {path}")
     return 0
 
@@ -184,8 +225,9 @@ def cmd_fixtures(args: argparse.Namespace) -> int:
             print(check.describe())
             failures += 0 if check.ok else 1
         print()
-        print(f"{len(FIXTURES) - failures}/{len(FIXTURES)} fixtures match their "
-              "hand calculations")
+        print(f"{len(FIXTURES) - failures}/{len(FIXTURES)} fixtures agree with "
+              "their hand calculations, the exact solver and the independent "
+              "reference oracle")
         return 1 if failures else 0
 
     if args.show:
@@ -238,6 +280,9 @@ def build_parser() -> argparse.ArgumentParser:
                             "resolution")
     sweep.add_argument("--tolerance", type=float, default=0.01,
                        help="bisection tolerance in minutes (default 0.01)")
+    sweep.add_argument("--no-exact", action="store_true",
+                       help="skip the discretization-free exact solver and "
+                            "report only the sampled grid result")
     sweep.set_defaults(func=cmd_sweep)
 
     pickup = sub.add_parser("pickup-sweep",

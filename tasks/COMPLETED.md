@@ -50,8 +50,8 @@
 **Red team (Agent C)**
 - `c` — inbound-only checking is wrong by 13 minutes on a 4-node network.
 - `e` — a refuge that is reachable but does not hold; "arrived" ≠ "evacuated".
-- `f` — reopening hazard makes feasibility non-monotone; `latest_dispatch()`
-  now refuses to summarise such a set.
+- `f` — reopening hazard makes feasibility non-monotone; the deadline summary
+  now refuses to describe such a set.
 - `g_myopic` — entry-time-only admission gets the responder *and the resident*
   caught mid-segment, and manufactures a hole in `T` that correct semantics does
   not have.
@@ -76,6 +76,77 @@ calculations; the non-monotonic result and its boundary refinement; mid-edge
 closure semantics under both policies; feasibility sets, thresholds and ensemble
 aggregation; pickup sensitivity; the invariants, including negative tests that
 tamper with genuine records; the config loader's strictness; and the full CLI.
+
+---
+
+## v0.1 scientific audit (release gate for `v0.1.0`)
+
+An adversarial audit of the phase-1 kernel, conducted before freezing it.
+Full account: `reports/V0_1_SCIENTIFIC_AUDIT.md`.
+
+### Defects found and fixed
+
+| # | defect | fix | would fail again if reverted |
+|---|---|---|---|
+| 1 | a grid sweep can report an empty feasible set that is not empty | exact, discretization-free interval solver; mandatory resolution reporting | fixtures `n`, `n_resolved`; `tests/test_temporal_resolution.py` |
+| 2 | grid monotonicity was the wrong predicate for "dispatch by X" | `dispatch_by_deadline()` requires a single component reaching the study start; `last_feasible_instant` always available | `tests/test_non_monotonic.py` |
+| 3 | silent truncation in the evaluator's arrival branching | raises `ArrivalBranchBudgetExceeded` | `tests/test_missions.py` |
+| 4 | "complete enumeration" asserted without conditions | `docs/ENUMERATION_COMPLETENESS.md` | — (documentation) |
+| 5 | claim language under-specified | `docs/CLAIMS.md`, `docs/ORACLE_FEASIBILITY_LIMIT.md` | — (documentation) |
+| 6 | an error in an audit hand calculation | corrected; the test that caught it now pins the whole timeline | `tests/test_properties.py` |
+| 7 | the mutation runner could leave a mutant in the tree if killed | signal-safe restore, clean-tree precondition, per-run timeout | `tools/mutation_test.py` |
+
+### Added
+
+**Formalisation**
+- `docs/MATHEMATICAL_SPECIFICATION.md` — the availability operator, the
+  structure of `𝒯_q = ⋃_k [a_k, b_k]`, a proof sketch that it is a finite union
+  of closed intervals and therefore exactly computable, why `sup 𝒯_q` is not a
+  deadline, and the three-way distinction between physical/oracle feasibility,
+  forecast-conditioned feasibility and an operational recommendation.
+- `docs/ORACLE_FEASIBILITY_LIMIT.md` — A-008 expanded, with fixture F worked
+  through and the approved vocabulary.
+- `docs/ENUMERATION_COMPLETENESS.md` — what "complete" means, under what
+  conditions, and what changes under reopening hazards, time-dependent travel
+  and waiting.
+- `docs/TEMPORAL_RESOLUTION.md` — where discretization enters and where it does
+  not; rules for quoting a sampled result.
+- `docs/CLAIMS.md` — eight permitted claims with their evidence, six prohibited
+  ones, and restricted vocabulary.
+
+**Machinery**
+- `feasibility/exact.py` — exact interval solver, with its conditions checked
+  rather than assumed.
+- `validation/brute_force.py` — an independent reference oracle sharing no
+  search, timing or hazard-assessment code with the main solver.
+- `network/paths.py` — simple-path enumeration that refuses to truncate.
+- `tools/mutation_test.py`, `tools/build_benchmark.py`.
+
+**Fixtures**
+- `h_north` / `h_south` — staging-location comparison; the nearer base has the
+  *smaller* feasible dispatch set.
+- `n` / `n_resolved` — a feasible window narrower than the sweep step.
+
+**Tests** (153 → 301)
+- property-based invariants over random closure-only worlds, scoped so they are
+  not imposed on the explicitly non-monotone fixtures;
+- adversarial exact-equality boundary tests, checked against both
+  implementations;
+- exact-solver tests including its refusal conditions;
+- reference-oracle agreement on answers *and* on chosen routes;
+- temporal-resolution tests; staging tests.
+
+**Reports**
+- `reports/V0_1_SCIENTIFIC_AUDIT.md`, `reports/BENCHMARK_V0_1.md`,
+  `reports/MUTATION_TESTING.md`.
+
+### Results
+
+- 301 tests pass.
+- 13 fixtures agree across hand calculation, grid sweep, exact solver and
+  independent oracle — with fixture `n`'s grid/exact disagreement being the
+  documented, intended one.
+- 8 / 8 mutants killed.
 
 ### Explicitly not done
 

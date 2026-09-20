@@ -99,17 +99,34 @@ A third, avoidable mechanism is **bad hazard semantics**: fixture `g_myopic`
 shows entry-time-only admission manufacturing a hole in `T` that full-interval
 admission does not have.
 
-Accordingly, `FeasibleDispatchSet.latest_dispatch()` raises
-`NonMonotonicFeasibilityError` unless the set is monotone on the studied grid.
-`sup T` remains available as `.supremum`, labelled as what it is: a true
-statement about the supremum and a false statement about the set (D-006).
+Accordingly, `dispatch_by_deadline()` raises `DispatchByDeadlineUndefined`
+unless the set is a single component reaching the start of the studied range.
+`last_feasible_instant` remains available, named so that it cannot be mistaken
+for a deadline: it is a true statement about the supremum and, on its own, says
+nothing about earlier times (D-006, D-019).
+
+The full formal development — the availability operator, the structure of
+`T_q` as a finite union of closed intervals `⋃_k [a_k, b_k]`, and the proof
+that it is exactly computable — is in
+[`MATHEMATICAL_SPECIFICATION.md`](MATHEMATICAL_SPECIFICATION.md).
 
 ## What a positive answer does and does not mean
 
 `t ∈ T(q)` means: **under the stated scenarios, with full foresight of each
 scenario's hazard timeline, a plan exists that completes the mission.**
 
-It does not mean an online dispatcher could find that plan. The planner here
-knows each scenario's entire future (A-008). That makes every feasibility result
-in this repository an **optimistic upper bound** on what is achievable with real
-forecasting. Narrowing that gap is future work, not a completed claim.
+This is *oracle-conditioned physical feasibility*. It is one of three distinct
+objects that share this formula, and the only one implemented here:
+
+| object | conditioned on | implemented? |
+|---|---|---|
+| **physical / oracle feasibility** | the true, fully specified scenario | **yes** |
+| forecast-conditioned feasibility | a forecast available at decision time | no |
+| operational dispatch recommendation | forecast + availability + crewing + accountability | no |
+
+Every result in this repository is therefore an **oracle feasibility envelope**
+— a *physical feasibility upper bound* — and never an operating envelope or a
+recommendation. `docs/ORACLE_FEASIBILITY_LIMIT.md` works fixture F through as a
+concrete case: its `[11, 13]` window is physically real and operationally
+unusable by anyone who cannot predict the reopening. `docs/CLAIMS.md` lists the
+wording that is and is not permitted.

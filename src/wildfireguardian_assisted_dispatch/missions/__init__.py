@@ -1,6 +1,10 @@
 """Mission specification, evaluation and records."""
 
-from .evaluator import evaluate_mission, evaluate_over_ensemble
+from .evaluator import (
+    ArrivalBranchBudgetExceeded,
+    evaluate_mission,
+    evaluate_over_ensemble,
+)
 from .policy import (
     DEFAULT_POLICY,
     MYOPIC_POLICY,
@@ -30,6 +34,7 @@ __all__ = [
     "MYOPIC_POLICY",
     "evaluate_mission",
     "evaluate_over_ensemble",
+    "ArrivalBranchBudgetExceeded",
     "MissionResult",
     "FailureReason",
     "HazardConflict",

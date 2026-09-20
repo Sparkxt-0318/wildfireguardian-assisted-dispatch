@@ -94,6 +94,7 @@ def build() -> Fixture:
             "route: fast while t <= 4 (arrival t+16), slow after (arrival t+20)"
         ),
         expected_windows=((0.0, 20.0),),
+        expected_exact_components=((0.0, 20.0),),
         notes=(
             "At t = 6 the fast corridor is safe at the entry instant t = 12 "
             "and unsafe at the exit instant t = 22. This policy declines it.",
@@ -125,6 +126,10 @@ def build_myopic() -> Fixture:
         ),
         expected_windows=((0.0, 4.0), (15.0, 20.0)),
         expected_monotone=False,
+        # Under entry-time-only admission feasibility is a property of the
+        # planner's choice, not of the existence of a safe plan, so the exact
+        # interval solver does not apply. The brute-force oracle covers it.
+        exact_solver_applies=False,
         notes=(
             "The hole in this feasible set is manufactured entirely by the "
             "wrong hazard semantics. Under full-interval admission the same "

@@ -103,3 +103,22 @@ Destinations are alternatives, distinguished only by arrival time, dwell
 requirement, availability window and an explicit tie-break priority. There is no
 modelled quality, distance-to-hospital, or suitability.
 *If violated:* selection by earliest arrival may pick the wrong place.
+
+### A-016 — Hazard timelines are finite unions of closed intervals
+Every element's safety is a piecewise-constant function of time with finitely
+many breakpoints, and windows are closed (D-002).
+*Why it matters:* this is what makes the feasible dispatch set a finite union of
+closed intervals and therefore exactly computable
+(`docs/MATHEMATICAL_SPECIFICATION.md` §3). A hazard representation with
+infinitely many breakpoints, or with open windows, would break both the exact
+solver and the "supremum is attained" property.
+*If violated:* the exact solver's premise fails; fall back to sampling and to
+the resolution discipline in `docs/TEMPORAL_RESOLUTION.md`.
+
+### A-017 — A feasible plan is a plan someone could have chosen
+`S(t, m) = 1` asserts the *existence* of a plan, not that any particular
+planner would find it. Under the default admission policy the main solver does
+find it; under entry-time-only admission the planner demonstrably does not
+(fixture `g_myopic`).
+*If violated (i.e. in reality):* see A-008 — this is the same gap viewed from
+the planning side rather than the information side.

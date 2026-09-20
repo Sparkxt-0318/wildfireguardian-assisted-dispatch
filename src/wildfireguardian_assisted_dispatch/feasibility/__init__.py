@@ -4,10 +4,18 @@ from .dispatch import (
     DispatchOutcome,
     DispatchSweep,
     FeasibleDispatchSet,
-    NonMonotonicFeasibilityError,
+    DispatchByDeadlineUndefined,
     dispatch_grid,
     p_success,
     sweep_dispatch_times,
+)
+from .exact import (
+    ClosedInterval,
+    ExactFeasibleSet,
+    ExactSolverUnavailable,
+    IntervalSet,
+    exact_feasible_set,
+    scenario_feasible_set,
 )
 from .refine import Transition, refine_transitions
 from .sensitivity import PickupCase, PickupSensitivity, sweep_pickup_durations
@@ -19,10 +27,16 @@ __all__ = [
     "DispatchSweep",
     "DispatchOutcome",
     "FeasibleDispatchSet",
-    "NonMonotonicFeasibilityError",
+    "DispatchByDeadlineUndefined",
     "refine_transitions",
     "Transition",
     "sweep_pickup_durations",
     "PickupSensitivity",
     "PickupCase",
+    "exact_feasible_set",
+    "scenario_feasible_set",
+    "ExactFeasibleSet",
+    "ExactSolverUnavailable",
+    "IntervalSet",
+    "ClosedInterval",
 ]

@@ -103,6 +103,7 @@ def build() -> Fixture:
             "chosen route: north while t <= 15 (earlier arrival), south after"
         ),
         expected_windows=((0.0, 30.0),),
+        expected_exact_components=((0.0, 30.0),),
         notes=(
             "For t <= 15 the mission arrives at t+20 via the ridge; from t = 16 "
             "it arrives at t+30 via the valley. Feasibility survives the loss "
@@ -142,6 +143,7 @@ def build_ensemble() -> Fixture:
             "T at q=1.0 is [0, 15];  at q=0.8 it is [0, 30]"
         ),
         expected_windows=((0.0, 15.0),),
+        expected_exact_components=((0.0, 15.0),),
         expected_p_success={0.0: 1.0, 15.0: 1.0, 16.0: 0.8, 30.0: 0.8, 31.0: 0.0},
         notes=(
             "Under an independent-edge product model the same inputs would "

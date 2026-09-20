@@ -5,10 +5,12 @@ trusted, not by effort.
 
 ---
 
-## Phase 1 — Deterministic kernel and small ensembles ✅ complete
+## Phase 1 — Deterministic kernel and small ensembles ✅ complete, audited, tagged `v0.1.0`
 
-Settle the semantics against arithmetic. Everything hand-checkable.
-See `COMPLETED.md` for the item-by-item record.
+Settle the semantics against arithmetic. Everything hand-checkable. Then audit
+it adversarially and freeze it as a benchmark.
+See `COMPLETED.md` for the item-by-item record and
+`reports/V0_1_SCIENTIFIC_AUDIT.md` for what the audit found.
 
 ---
 
@@ -59,15 +61,26 @@ a roadmap item and not a fix.
 Capacity (A-012), suitability, and a modelled cost of using a refuge rather than
 a shelter.
 
+### R-6 — Adaptive sweep refinement
+The exact solver settles the feasible *set*, but the sampled `P_success` curve
+used for plots and threshold studies can still alias. Refine adaptively where
+`P_success` changes, and report the achieved resolution per interval.
+
+### R-7 — Extend the exact solver, or state clearly where it stops
+Every feature in R-1, R-2 and R-4 breaks one of the exact solver's stated
+conditions. Each must either extend the solver or ship with an explicit
+statement that the feasible set is resolution-limited again
+(`docs/TEMPORAL_RESOLUTION.md` §5).
+
 ---
 
 ## Phase 3 — Multi-entity dispatch
 
-### R-6 — Multiple residents, one responder
+### R-8 — Multiple residents, one responder
 Sequencing and the interaction between service durations and closures. A
 scheduling problem layered on the current feasibility kernel.
 
-### R-7 — Multiple responders
+### R-9 — Multiple responders
 Assignment plus scheduling. Needs a clear statement of the objective (maximise
 residents evacuated? minimise worst-case exposure?) before any code.
 
@@ -75,20 +88,22 @@ residents evacuated? minimise worst-case exposure?) before any code.
 
 ## Phase 4 — Interfaces to reality (explicitly not before phase 3)
 
-### R-8 — Hazard field ingestion boundary
+### R-10 — Hazard field ingestion boundary
 Define the adapter that turns *any* external time-varying hazard product into
 corridor/node timelines. The adapter is the integration point; nothing upstream
 of it enters this kernel.
 
-### R-9 — Network ingestion boundary
+### R-11 — Network ingestion boundary
 Same, for road networks: OSM-style input to `RoadNetwork`, with corridor
 identity preserved.
 
-### R-10 — WildfireGuardian routing integration
+### R-12 — WildfireGuardian routing integration
 **Blocked until the semantics above are fixed** (D-016). The integration
 boundary should be designed after the questions "what happens mid-edge?",
 "what does `P_success` mean?" and "what is `T`?" already have written answers —
-which, as of phase 1, they do.
+which, as of the v0.1 audit, they do. A concrete proposal for that boundary —
+query, answer, and the four contract rules it must enforce — is in
+`reports/V0_1_SCIENTIFIC_AUDIT.md` §8.
 
 ---
 
@@ -99,4 +114,7 @@ Revisit only with a written decision record:
 - fire-spread physics inside this repository;
 - calibrated probabilities from hand-authored ensembles;
 - any clinical interpretation of the pickup durations;
-- reporting a single latest dispatch time for a non-monotone feasible set.
+- reporting a single latest dispatch time for a feasible set that is not a
+  single component reaching the start of the studied range;
+- describing any result as an operating envelope or a dispatch recommendation;
+- any feature that silently truncates rather than raising.

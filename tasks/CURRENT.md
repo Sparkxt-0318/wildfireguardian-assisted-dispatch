@@ -1,55 +1,82 @@
 # Current work
 
-**Status:** phase 1 is complete and the tree is green. No work is in progress.
+**Status:** v0.1.0 — audited and frozen as a benchmark release. The tree is
+green and no work is in progress.
 
 ```
-pytest                        ->  153 passed
-wg-dispatch fixtures --check  ->  9/9 fixtures match their hand calculations
+pytest                        ->  301 passed
+wg-dispatch fixtures --check  ->  13/13 fixtures: hand calculation, exact
+                                  solver and independent oracle all agree
+python tools/mutation_test.py ->  8/8 mutants killed
 ```
 
-## Where things stand
+## What this release is
 
-The deterministic kernel, the hazard semantics, the dispatch-time feasibility
-set, the scenario ensembles, the pickup sensitivity, the fixtures, the CLI and
-the documentation are all done and validated. Phase-1 exit criteria are all met
-— see `COMPLETED.md`.
+An **oracle / physical-feasibility layer**, not a dispatcher. Given a fully
+specified hazard scenario, it decides whether a complete assisted-evacuation
+mission was physically possible at each dispatch time, and returns the feasible
+dispatch set exactly.
+
+Read `docs/CLAIMS.md` before quoting anything from it.
+
+## What the audit changed
+
+Three defects, found and fixed (`reports/V0_1_SCIENTIFIC_AUDIT.md` §4):
+
+1. **A grid sweep could report an empty feasible set that was not empty.**
+   Fixture N has a true window of `[11.3, 11.4]`; the default sweep missed it
+   entirely. Fixed with an exact, discretization-free solver, plus mandatory
+   resolution reporting on every sampled result.
+2. **Grid monotonicity was the wrong predicate for a deadline.** Replaced with
+   `is_dispatch_by_deadline` (single component reaching the start of the studied
+   range); `last_feasible_instant` is now always available and is named so it
+   cannot be mistaken for a deadline.
+3. **A silent truncation in arrival branching.** Now raises
+   `ArrivalBranchBudgetExceeded`.
+
+Plus: an independent brute-force oracle, property-based tests, adversarial
+boundary tests, mutation testing, and five new documents —
+`MATHEMATICAL_SPECIFICATION`, `ORACLE_FEASIBILITY_LIMIT`,
+`ENUMERATION_COMPLETENESS`, `TEMPORAL_RESOLUTION`, `CLAIMS`.
 
 ## What a reader should look at first
 
-1. `wg-dispatch sweep f` — the non-monotonic feasible set, `{0} ∪ [11, 13]`, and
-   the reason no single deadline describes it.
-2. `wg-dispatch evaluate g_myopic --dispatch-time 6` — a responder caught
-   mid-segment by entry-time-only hazard checking, with the full log.
-3. `wg-dispatch fixtures --show c` — the inbound/outbound conflict, and the
-   thirteen minutes an inbound-only check invents.
+1. `reports/BENCHMARK_V0_1.md` — the seven canonical examples end to end.
+2. `wg-dispatch sweep n` — the grid and the exact solver disagreeing, both
+   behaving correctly.
+3. `wg-dispatch sweep f` — the non-monotonic feasible set, and why no single
+   deadline describes it.
+4. `wg-dispatch evaluate g_myopic --dispatch-time 6` — a responder caught
+   mid-segment by entry-time-only hazard checking.
 
 ## Next up
 
-`tasks/ROADMAP.md` R-3 (online / rolling-horizon planning) is the highest-value
-next item, because it is what converts every current result from an upper bound
-into an achievable envelope. R-1 (explicit waiting) is the smallest well-defined
-increment and is a good warm-up: the semantics are already written down in
-`docs/DECISIONS.md` D-004, so the work is implementation plus one fixture.
+`tasks/ROADMAP.md` R-3 (online / rolling-horizon planning) remains the
+highest-value next item, and after the audit it is also the best-specified: the
+oracle→forecast gap now has its own document, its own vocabulary, and a worked
+example in fixture F. R-1 (explicit waiting) is still the smallest well-defined
+increment, and `ENUMERATION_COMPLETENESS.md` §7 now sketches the finiteness
+repair it will need.
 
 ## Open questions carried forward
 
-- **Margin-aware selection (R-4).** Fixture E currently picks the near refuge
-  over the durable shelter whenever the refuge qualifies. Correct under the
-  stated objective, arguably wrong operationally. Needs a decision on the
-  objective before code.
-- **Ensemble size.** Three coherent scenarios is enough to demonstrate the
-  aggregation rule. It is not enough for any claim about distributions, and the
-  weights are hand-authored anyway (A-006). What would make a larger ensemble
-  meaningful rather than merely larger?
-- **Grid resolution policy.** `refine_transitions` finds boundaries inside a
-  cell, but a feasible window entirely between two grid points is still
-  invisible (`FAILURE_MODES.md` F-8). Should the sweep adaptively refine where
-  `P_success` changes?
+- **Margin-aware selection (R-4).** Unchanged by the audit: fixture E still
+  picks the near refuge over the durable shelter whenever the refuge qualifies.
+- **Ensemble semantics.** What would make a larger ensemble *meaningful*, and
+  what `q` means as a risk appetite applied to an oracle quantity.
+- **Adaptive grid refinement.** The exact solver handles the feasible *set*,
+  but the `P_success` curve used for plots is still sampled and can alias.
+- **The exact solver's conditions are not universal.** Any future feature that
+  breaks one of them returns the feasible set to being resolution-limited, and
+  must say so.
 
 ## Do not do
 
 - Do not integrate real WildfireGuardian routing (D-016).
-- Do not add a real fire model or a real road network in this phase
-  (`docs/SCOPE.md`).
+- Do not add forecasting, OSSE observations, traffic simulation, wildfire spread
+  models, personal-data systems, optimisation across villages, or production
+  integrations. This repository owns one question.
+- Do not describe any result as an operating envelope, a dispatch
+  recommendation, or a safety claim (`docs/CLAIMS.md`).
 - Do not change a fixture's expected windows to match new output. If an answer
   changes, the arithmetic changes first, in the fixture's `hand_calculation`.

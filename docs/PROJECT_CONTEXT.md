@@ -56,6 +56,13 @@ one non-monotonic example, working scenario ensembles, working pickup
 sensitivity, passing hand-calculable fixtures, detailed failure reasons, and
 complete documentation. All of them are met; see `tasks/COMPLETED.md`.
 
+The kernel was then put through an adversarial scientific audit before being
+frozen as `v0.1.0`. The audit found three defects — a grid sweep that could
+miss feasible windows entirely, a wrong predicate for "dispatch by X", and a
+silent truncation in arrival branching — all fixed, each with a test that would
+fail if the fix were reverted. `reports/V0_1_SCIENTIFIC_AUDIT.md` has the full
+account, including what survived and under what assumptions.
+
 ## How the pieces fit
 
 ```
@@ -80,9 +87,16 @@ complete documentation. All of them are met; see `tasks/COMPLETED.md`.
 
 - **Someone new**: `README.md`, then `RESEARCH_QUESTION.md`, then
   `MISSION_MODEL.md`.
+- **Someone who needs the formal object**: `MATHEMATICAL_SPECIFICATION.md`.
 - **Someone implementing**: `HAZARD_SEMANTICS.md` and `TIME_SEMANTICS.md`, then
-  `DECISIONS.md` for anything that looks arbitrary — it probably is not.
-- **Someone reviewing a result**: `ASSUMPTIONS.md` and `FAILURE_MODES.md`, in
-  that order. The second half of `FAILURE_MODES.md` is a list of ways this
-  project itself could mislead you.
+  `DECISIONS.md` for anything that looks arbitrary — it probably is not, and
+  `ENUMERATION_COMPLETENESS.md` for what the search does and does not promise.
+- **Someone reviewing a result**: `CLAIMS.md` first, then `ASSUMPTIONS.md`,
+  `ORACLE_FEASIBILITY_LIMIT.md`, `TEMPORAL_RESOLUTION.md` and
+  `FAILURE_MODES.md`. The second half of `FAILURE_MODES.md` is a list of ways
+  this project itself could mislead you.
+- **Someone about to quote a number**: `CLAIMS.md` and
+  `ORACLE_FEASIBILITY_LIMIT.md`, without exception.
 - **Someone extending it**: `AGENTS.md` and `tasks/ROADMAP.md`.
+- **Someone auditing it**: `reports/V0_1_SCIENTIFIC_AUDIT.md`, then
+  `reports/BENCHMARK_V0_1.md` and `reports/MUTATION_TESTING.md`.

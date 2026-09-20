@@ -19,23 +19,25 @@ def test_every_fixture_documents_its_arithmetic(key):
         f"fixture {key} has no hand calculation; expected windows copied from a "
         "previous run would validate nothing"
     )
-    assert fixture.expected_windows or fixture.threshold > 1.0
+    # A fixture must state an expected answer somewhere. Fixture 'n' states an
+    # empty SAMPLED answer on purpose, so the exact components carry it there.
+    assert fixture.expected_windows or fixture.expected_exact_components
 
 
 def test_fixture_a_deadline_is_a_subtraction():
     # 40 (closure) - 10 (ingress) - 5 (pickup) - 10 (egress) = 15
-    assert load("a").feasible_set().latest_dispatch() == 15.0
+    assert load("a").feasible_set().dispatch_by_deadline() == 15.0
 
 
 def test_fixture_b_survives_the_loss_of_the_fast_route():
     feasible = load("b").feasible_set()
-    assert feasible.latest_dispatch() == 30.0
+    assert feasible.dispatch_by_deadline() == 30.0
     assert feasible.is_prefix
 
 
 def test_fixture_c_is_bound_by_the_outbound_traversal():
     fixture = load("c")
-    assert fixture.feasible_set().latest_dispatch() == 14.0
+    assert fixture.feasible_set().dispatch_by_deadline() == 14.0
     # The naive inbound-only answer would have been 45 - 10 - 8 = 27.
     assert fixture.feasible_set().supremum < 27.0
 

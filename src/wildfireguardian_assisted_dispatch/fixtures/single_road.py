@@ -64,6 +64,7 @@ def build() -> Fixture:
             "t_dagger = 40 - 10 - 5 - 10 = 15"
         ),
         expected_windows=((0.0, 15.0),),
+        expected_exact_components=((0.0, 15.0),),
         notes=(
             "The deadline is set by the egress EXIT time, not the entry time. "
             "An entry-time-only check would give t <= 25 and send the "

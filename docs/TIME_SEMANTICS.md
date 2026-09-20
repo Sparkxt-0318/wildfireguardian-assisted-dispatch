@@ -31,9 +31,37 @@ synthetic step functions, the difference between the two conventions is a
 measure-zero set of instants and carries no physical content — but it must be
 stated once and obeyed everywhere, which is what `hazards/timeline.py` is for.
 
-Consequence worth noticing: a mission can succeed with **zero margin**. Fixture
-A at `t = 15` clears the corridor at exactly `t = 40`. The record reports
-`margin = 0`, which is honest about how much slack a real operation would have.
+### Consequences, stated rather than discovered
+
+The v0.1 audit tested every exact-equality case
+(`tests/test_boundary_semantics.py`) against both the main evaluator and the
+independent oracle. These are the consequences of the convention. None of them
+was chosen to make a test pass; each follows from "`end` is the last safe
+instant".
+
+| case | outcome | why |
+|---|---|---|
+| edge closes exactly at the **exit** instant | **safe**, margin 0 | `[t_in, t_out] ⊆ [α, β]` holds with `t_out = β` |
+| edge closes exactly at the **entry** instant | **caught mid-edge** (degenerate) | safe at entry, unsafe an instant later; under the default policy it is simply never entered |
+| corridor **reopens** exactly at the entry instant | usable | `t_in = α` is inside the window |
+| safe window exactly as long as the traversal | usable | equality is allowed at both ends |
+| **degenerate** window `[α, α]` | cannot carry any positive-duration traversal | and *can* carry a zero-duration occupancy |
+| pickup ends exactly as the address is lost | **safe** | the service interval is closed |
+| refuge lost exactly on arrival, `min_safe_dwell = 0` | **success** | uncomfortable, and exactly why D-009 exists |
+| same refuge with any positive dwell | failure | the dwell interval extends past `β` |
+| destination `available_until` exactly equal to arrival | accepted | availability endpoints are inclusive |
+
+Two structural consequences follow, and both are asserted as tests:
+
+- **A mission can succeed with exactly zero margin.** Fixture A at `t = 15`
+  clears the corridor at exactly `t = 40`. The record reports `margin = 0`,
+  which is honest about how much slack a real operation would have — namely
+  none.
+- **The feasible dispatch set is closed**, so when it is non-empty and bounded
+  its supremum is *attained*: the last feasible dispatch instant is itself
+  feasible. This is checked for every fixture and over random generated worlds
+  (`tests/test_properties.py`), and it is what makes `last_feasible_instant` a
+  usable quantity rather than an open bound.
 
 ## Waiting
 

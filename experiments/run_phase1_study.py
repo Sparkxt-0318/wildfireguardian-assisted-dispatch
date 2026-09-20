@@ -18,6 +18,10 @@ from wildfireguardian_assisted_dispatch.cli.plotting import (
     has_matplotlib,
     plot_feasibility,
 )
+from wildfireguardian_assisted_dispatch.feasibility.exact import (
+    ExactSolverUnavailable,
+    exact_feasible_set,
+)
 from wildfireguardian_assisted_dispatch.feasibility.refine import refine_transitions
 from wildfireguardian_assisted_dispatch.feasibility.sensitivity import (
     sweep_pickup_durations,
@@ -47,7 +51,7 @@ def main() -> int:
         "checked against the fixture's own hand calculation, not against a",
         "previous run.",
         "",
-        "| fixture | title | expected T | computed T | monotone | agrees |",
+        "| fixture | title | expected T (sampled) | grid sweep | exact solver | agrees |",
         "|---|---|---|---|---|---|",
     ]
     failures = 0
@@ -67,9 +71,17 @@ def main() -> int:
                 title=f"Fixture {key.upper()}: {fixture.title}",
             )
 
+        try:
+            exact = exact_feasible_set(
+                fixture.spec, fixture.ensemble,
+                (fixture.grid[0], fixture.grid[-1]), threshold=fixture.threshold)
+            exact_text = fmt((c.lo, c.hi) for c in exact.components)
+        except ExactSolverUnavailable:
+            exact_text = "n/a (conditions not met)"
+
         lines.append(
             f"| `{key}` | {fixture.title} | {fmt(fixture.expected_windows)} | "
-            f"{fmt(feasible.intervals)} | {feasible.is_monotone} | "
+            f"{fmt(feasible.intervals)} | {exact_text} | "
             f"{'yes' if check.ok else '**NO**'} |"
         )
         print(check.describe())

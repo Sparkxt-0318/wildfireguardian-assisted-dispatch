@@ -81,6 +81,7 @@ def build() -> Fixture:
             "shelter after"
         ),
         expected_windows=((0.0, 39.0),),
+        expected_exact_components=((0.0, 39.0),),
         notes=(
             "At t = 15 the refuge stops qualifying and the mission gets 15 "
             "minutes longer overnight: arrival jumps from t+16 to t+31. "

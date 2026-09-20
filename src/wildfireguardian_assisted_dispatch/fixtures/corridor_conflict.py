@@ -77,6 +77,7 @@ def build() -> Fixture:
             "t_dagger = 45 - (10 + 8 + 5 + 8) = 14"
         ),
         expected_windows=((0.0, 14.0),),
+        expected_exact_components=((0.0, 14.0),),
         notes=(
             "Checking only the inbound traversal gives t + 18 <= 45, i.e. "
             "t <= 27: thirteen minutes of pure fiction, and every one of them "

@@ -63,9 +63,18 @@ and tries to make the kernel lie. Current red-team fixtures:
 - `e` — a refuge that is reachable but does not hold, so "arrived" and
   "evacuated" come apart.
 
+- `n` / `n_resolved` — a feasible window narrower than the sweep step, which the
+  grid reports as no window at all;
+- `h_north` / `h_south` — the nearer staging point with the *smaller* feasible
+  dispatch set.
+
 **Agent C's standing rule:** a new semantic claim ships with a fixture that
 would fail if the claim were false. "The tests pass" is not evidence; "this
 fixture would break if we reverted the decision" is.
+
+Agent C also owns `tools/mutation_test.py`. A defect the project claims to
+defend against, that no test rejects, is a hole in the suite and a release
+blocker — not a note for later.
 
 ## Non-negotiables
 
@@ -85,12 +94,27 @@ fixture would break if we reverted the decision" is.
    forbidden (`docs/VALIDATION.md`).
 7. **Detailed failures.** "Infeasible" alone is never an acceptable output. A
    failing mission reports where, when, and against which hazard.
+8. **Claim discipline.** `docs/CLAIMS.md` is binding on every output — code,
+   plots, reports, commit messages, conversation. The prohibited list ("safe
+   route", "guaranteed rescue", "operational dispatch recommendation",
+   "validated Korean rescue deadline", "lives saved", "real-world probability
+   of survival") is not negotiable (D-023).
+9. **The oracle qualifier travels with the result.** Every feasible set here is
+   an *oracle feasibility envelope* / *physical feasibility upper bound*, never
+   an operating envelope (A-008, `docs/ORACLE_FEASIBILITY_LIMIT.md`).
+10. **Nothing is "complete" without its conditions.** Use "complete under the
+    conditions in `ENUMERATION_COMPLETENESS.md` §3", or do not use the word
+    (D-024).
+11. **No silent truncation, anywhere.** Every budget raises. The v0.1 audit
+    found one that did not — arrival branching — and it now raises too.
 
 ## Before you commit
 
 ```bash
-pytest                      # everything
-wg-dispatch fixtures --check   # every hand calculation, re-derived
+pytest                             # everything
+wg-dispatch fixtures --check       # hand calculation + exact solver + oracle
+python tools/mutation_test.py      # a surviving mutant is a release blocker
+python tools/build_benchmark.py --write   # if any fixture or answer changed
 ```
 
 Then check the change against this list:
@@ -102,6 +126,14 @@ Then check the change against this list:
 - [ ] Does every new policy knob have a documented default?
 - [ ] Does any new failure path emit a `FailureReason` and a `HazardConflict`?
 - [ ] Is `tasks/CURRENT.md` still true?
+- [ ] Does any new answer agree with the **independent oracle** and the
+      **exact solver**, or is there a stated reason one does not apply?
+- [ ] Does any new claim appear in `docs/CLAIMS.md`, or is it prohibited there?
+- [ ] If the change touches a budget or a cap: does it raise rather than
+      truncate?
+- [ ] If the change breaks a condition of the exact solver, does the code refuse
+      rather than fall back to sampling, and does the documentation say the
+      result is resolution-limited again?
 
 ## Style
 

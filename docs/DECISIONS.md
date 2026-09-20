@@ -66,11 +66,13 @@ excluded. On five-node synthetic networks that cost is zero.
 **Enforced by.** `search/time_expanded.py`; `validation/invariants.py`;
 `test_search.py::test_simple_paths_only_by_default`.
 
-### D-006 — Report the set; emit `t†` only when the set is monotone
+### D-006 — Report the set; emit a deadline only when the deadline reading is true
+*(amended by the v0.1 audit — see D-019.)*
 **Decision.** The computed object is `T(q) = {t : P_success(t) ≥ q}`.
-`latest_dispatch()` raises `NonMonotonicFeasibilityError` unless feasibility is
-non-increasing on the studied grid. `sup T` stays available as `.supremum`,
-labelled as a statement about the supremum rather than about the set.
+`dispatch_by_deadline()` raises `DispatchByDeadlineUndefined` unless the set is
+a single component reaching the start of the studied range. `last_feasible_instant`
+stays available unconditionally, labelled as a statement about the supremum
+rather than about the set.
 **Alternative.** Always return `sup T`, with a warning.
 **Why rejected.** A warning next to a number gets dropped the moment the number
 is copied into a slide. Fixture F's set is `{0} ∪ [11, 13]`; "leave before 13"
@@ -171,3 +173,91 @@ optional extra, and its absence is reported rather than worked around.
 **Why.** This is a terminal research tool, the feasible set is one-dimensional,
 and a strip shows a hole in the set just as clearly as a figure — while working
 over ssh, in CI logs and in a commit message.
+
+---
+
+## Amendments and additions from the v0.1 scientific audit
+
+### D-018 — The exact interval solver is the primary feasible-set method
+**Decision.** `feasibility/exact.py` computes `T_q` in closed form as a finite
+union of closed intervals, with no time discretization. `wg-dispatch sweep`
+runs it alongside the grid sweep and cross-checks the two. The grid sweep is
+retained because `P_success(t)` as a *curve* (for plots, tables and threshold
+studies) is naturally sampled.
+**Alternative.** Keep sampling and simply recommend a finer grid.
+**Why rejected.** Fixture N has a feasible window 0.1 minutes wide; no
+recommendation protects a reader who does not know the feature size in advance,
+and in general nobody does. The audit's requirement was to *detect and refine
+reliably* or *report the resolution and refuse to imply exactness* — this does
+both.
+**Conditions.** Checked at call time, never assumed: constant travel times, no
+waiting, simple paths, full-interval admission, bounded plan and scenario
+counts. A failed condition raises `ExactSolverUnavailable` naming the condition;
+it never degrades silently to sampling.
+**Enforced by.** `tests/test_exact_solver.py`, `tests/test_temporal_resolution.py`;
+fixtures `n`, `n_resolved`.
+
+### D-019 — "Dispatch-by deadline" is a restricted phrase
+**Decision.** `dispatch_by_deadline()` is defined only when the feasible set is
+a single component reaching the start of the studied range. Otherwise the
+vocabulary is *feasible dispatch set*, *feasible dispatch windows*, and *last
+feasible dispatch instant*, and the API refuses the deadline reading rather than
+qualifying it.
+**Alternative.** Return `sup T` with a warning attached (the pre-audit
+behaviour).
+**Why rejected.** A warning next to a number survives exactly as long as it
+takes someone to copy the number. Note also that grid monotonicity was the wrong
+predicate: fixture `n_resolved` has a *single* feasible component and a
+non-monotone sampled indicator, purely because the studied range starts before
+the component does.
+**Enforced by.** `tests/test_non_monotonic.py`, `docs/CLAIMS.md`.
+
+### D-020 — The reference oracle duplicates path enumeration on purpose
+**Decision.** `validation/brute_force.py` carries its own private DFS, its own
+window scanning and its own timing arithmetic, rather than importing
+`network.paths.simple_paths` or `hazards.semantics`.
+**Why.** An oracle that shares its path enumeration with the solver it checks is
+not an independent check of path enumeration. The duplication is the point, and
+it is annotated as such in both modules so that a future tidy-up does not
+"remove the redundancy".
+**Enforced by.** `tests/test_reference_oracle.py`.
+
+### D-021 — Monotonicity properties are scoped to closure-only worlds
+**Decision.** The property-based tests that assert "longer pickup never helps",
+"slower roads never help" and "earlier hazard never helps" generate worlds whose
+timelines are closure-only.
+**Why.** Those statements are *false* in general — fixture F and
+`test_longer_pickup_can_help_when_hazard_reopens` are the counterexamples.
+Asserting them universally would make the test suite stronger than the model,
+which is worse than not testing them at all. The scope restriction is stated in
+the test module docstring and re-checked by a test that the properties genuinely
+fail outside it.
+**Enforced by.** `tests/test_properties.py`.
+
+### D-022 — Mutation testing is part of the release gate
+**Decision.** `tools/mutation_test.py` introduces each defect the project claims
+to defend against into the real source, runs the suite, and records which tests
+caught it. A surviving mutant is a release blocker.
+**Why.** A passing suite proves nothing on its own; it might be asserting
+tautologies. Mutation results are the evidence that the invariants have teeth.
+**Operational note.** The runner restores the tree on SIGINT/SIGTERM as well as
+on normal exit, and refuses to start if a previous run leaked a mutation — both
+added after an early version of the script left `allow_node_revisits = True` in
+the working tree when it was interrupted.
+
+### D-023 — `docs/CLAIMS.md` binds every output
+**Decision.** A permitted-claims list and a prohibited-phrasing list, binding on
+papers, plots, tables, README text, commit messages and conversation.
+**Why.** The repository's product is trustworthy claims. Prohibiting "safe
+route", "guaranteed rescue" and "lives saved" in writing is cheaper than
+retracting them later.
+
+### D-024 — The word "complete" requires stated conditions
+**Decision.** "Complete" is used only as "complete under the conditions in
+`ENUMERATION_COMPLETENESS.md` §3", and that document answers: is time continuous
+or discretized, what creates candidate time states, can infinitely many arise,
+under what assumptions enumeration is complete, what happens under reopening
+hazards, under time-dependent travel, and under waiting.
+**Why.** The pre-audit code and docs used "complete search" unqualified. It was
+true under conditions nobody had written down, which is indistinguishable from
+being wrong.

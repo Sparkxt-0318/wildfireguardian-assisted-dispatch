@@ -34,8 +34,16 @@ class Fixture:
     grid: tuple[float, ...]
     threshold: float = 1.0
     hand_calculation: str = ""
-    #: Feasible dispatch windows, as closed intervals of the sampled grid.
+    #: Feasible dispatch windows **as the sampled grid reports them**.
     expected_windows: tuple[tuple[float, float], ...] = ()
+    #: The exact connected components [a_k, b_k] of T_q, with no discretization.
+    #: These can legitimately differ from ``expected_windows`` - that difference
+    #: is the whole content of fixture ``n`` - so both are stated separately and
+    #: both are checked.
+    expected_exact_components: tuple[tuple[float, float], ...] = ()
+    #: Does the exact interval solver's condition set hold for this fixture?
+    #: ``False`` asserts that the solver *refuses* - which is itself checked.
+    exact_solver_applies: bool = True
     #: Expected ``P_success`` at selected dispatch times (ensemble fixtures).
     expected_p_success: Mapping[float, float] = field(default_factory=dict)
     expected_monotone: bool = True
@@ -58,8 +66,10 @@ class Fixture:
             f"  policy   : {self.spec.policy.describe()}",
             f"  scenarios: {', '.join(s.name for s in self.ensemble)}",
             f"  grid     : {self.grid[0]:g}..{self.grid[-1]:g} min",
-            f"  expected : {_fmt_windows(self.expected_windows)} "
-            f"at q={self.threshold:g}",
+            f"  expected (sampled on this grid): "
+            f"{_fmt_windows(self.expected_windows)} at q={self.threshold:g}",
+            f"  expected (exact, no discretization): "
+            f"{_fmt_windows(self.expected_exact_components)}",
         ]
         if self.hand_calculation:
             lines.append("  hand calculation:")

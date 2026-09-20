@@ -3,17 +3,31 @@
 ## The strategy
 
 There is no ground truth to compare against — the networks and hazards are
-invented. So validation here rests on two independent legs:
+invented. So validation here rests on **five** independent legs, three of which
+were added by the v0.1 scientific audit:
 
 1. **Arithmetic.** Every fixture carries a hand calculation that a reviewer can
-   check with a pencil, and the test suite re-derives the fixture's feasible
-   windows and compares them against that arithmetic.
+   check with a pencil, and the suite re-derives the fixture's feasible windows
+   and compares them against that arithmetic.
 2. **Invariants.** Every mission record is re-checked from scratch against the
    network, the pickup model and the hazard scenario, by code that does not
    share a line with the evaluator.
+3. **An independent implementation.** `validation/brute_force.py` re-derives
+   every answer by enumerating plans with its own DFS, its own timing
+   arithmetic and its own window scanning. It shares no search, timing or
+   hazard-assessment code with the main solver, on purpose (D-020).
+4. **An exact solver.** `feasibility/exact.py` computes the feasible dispatch
+   set in closed form. Where the grid sweep samples, this does not, so the two
+   disagreeing is informative rather than mysterious (D-018).
+5. **Properties and mutations.** Property-based tests assert *relationships*
+   across families of random worlds; mutation testing introduces each defect the
+   project claims to defend against and checks the suite rejects it (D-021,
+   D-022).
 
-Neither leg alone is sufficient. Arithmetic catches wrong answers; invariants
-catch right answers reached by a route the model does not admit.
+No leg alone is sufficient. Arithmetic catches wrong answers; invariants catch
+right answers reached by a route the model does not admit; the oracle catches
+answers that are only self-consistent; the exact solver catches answers that are
+artefacts of sampling; mutation testing catches tests that assert nothing.
 
 > **Rule.** A fixture's expected windows must be derived from arithmetic, never
 > copied from a previous run. Expected values recorded from output validate
@@ -24,10 +38,17 @@ catch right answers reached by a route the model does not admit.
 ## Running it
 
 ```bash
-pytest                          # 153 tests
-wg-dispatch fixtures --check    # every hand calculation, re-derived
-wg-dispatch fixtures --show c   # one fixture's arithmetic in full
+pytest                              # the whole suite
+wg-dispatch fixtures --check        # hand calculation + exact solver + oracle
+wg-dispatch fixtures --show c       # one fixture's arithmetic in full
+python tools/mutation_test.py       # break it on purpose; see what survives
+python tools/build_benchmark.py     # regenerate reports/BENCHMARK_V0_1.md
 ```
+
+`wg-dispatch fixtures --check` performs all three comparisons per fixture: the
+sampled sweep against the hand-derived grid windows, the exact solver against
+the hand-derived components, and the reference oracle against the main solver
+point by point.
 
 ## The fixtures
 
@@ -42,6 +63,10 @@ wg-dispatch fixtures --show c   # one fixture's arithmetic in full
 | `f` | non-monotonic feasibility | the set has a hole | `{0} ∪ [11, 13]` |
 | `g` | mid-edge closure | an unclearable segment is never entered | `[0, 20]` |
 | `g_myopic` | entry-time-only admission | what the wrong semantics costs | `[0, 4] ∪ [15, 20]` |
+| `h_north` | staging comparison, near base | nearer is not wider | `[0, 12]` |
+| `h_south` | staging comparison, far base | the binding constraint moves | `[0, 15]` |
+| `n` | narrow window | a grid sweep can miss a feasible set entirely | exact `[11.3, 11.4]`, **sampled: empty** |
+| `n_resolved` | the same, finely sampled | resolution below the feature size | `[11.3, 11.4]` |
 
 ### Worked example — fixture C
 
@@ -110,6 +135,53 @@ genuine results and asserts the checks catch it:
 - re-auditing a real success against a harsher scenario → `safe_throughout`
   mismatch.
 
+## Property-based tests
+
+`tests/test_properties.py` generates small random worlds and asserts
+relationships rather than values:
+
+- a longer pickup, slower roads, or uniformly earlier hazard can only **shrink**
+  the feasible set;
+- `p = 0` dominates every positive pickup duration;
+- removing all hazard can only enlarge it;
+- a hazard-free world reduces to ordinary travel-time arithmetic, checked
+  against an independently computed shortest mission duration;
+- a disconnected resident or destination is infeasible under **any** hazard;
+- adding a positive-weight failing scenario cannot raise `P_success`;
+- weights normalise, `0 ≤ P_success ≤ 1`, and it equals the hand-summed weight
+  of the succeeding scenarios;
+- `sup 𝒯_q` is attained — dispatching at exactly that instant succeeds, and an
+  instant later it does not;
+- the main solver, the exact solver and the reference oracle agree pointwise.
+
+**Scope discipline.** The monotonicity properties hold only in *closure-only*
+worlds and are generated that way. Two tests assert that they genuinely fail
+outside that scope — on fixture F, a later dispatch and a *longer* pickup each
+turn failure into success. Without those, the property tests would be encoding
+the exact error this project exists to refute (D-021, `FAILURE_MODES.md` F-14).
+
+## Boundary semantics
+
+`tests/test_boundary_semantics.py` walks every exact-equality case — closure at
+the entry instant, closure at the exit instant, reopening at the entry instant,
+a window exactly as long as the traversal, a degenerate window, a pickup ending
+exactly as the address is lost, a refuge lost exactly on arrival, availability
+endpoints, and dispatch exactly at the feasible-set boundary — and checks each
+against the main evaluator **and** the independent oracle, so a convention
+implemented inconsistently in the two places cannot pass. Each expectation is
+derived from the stated convention, and the consequences are tabulated in
+`TIME_SEMANTICS.md` rather than discovered later.
+
+## Mutation testing
+
+`tools/mutation_test.py` introduces, one at a time, the eight defects the
+project claims to defend against: entry-only edge safety, product-style
+probability aggregation, ignored pickup duration, implicit waiting through
+cycles, a deadline emitted from a non-monotone set, silent search-budget
+truncation, travel continuing after a mid-edge failure, and an unsafe refuge
+accepted as a destination. Results are in `reports/MUTATION_TESTING.md`. A
+surviving mutant is a release blocker.
+
 ## Boundary refinement
 
 Grid sweeps locate a transition only to within one grid step.
@@ -124,7 +196,12 @@ grid resolution, not about monotonicity. If that is in doubt, sweep finer
 
 - That the model resembles any real road network or fire (A-001).
 - That the feasible sets are achievable in practice — they assume full foresight
-  within a scenario and are upper bounds (A-008, F-11).
+  within a scenario and are oracle-conditioned upper bounds (A-008, F-11, F-13).
 - That non-monotonicity is common in reality. The fixtures show it is
   *possible*, which is enough to make a single-deadline summary unsound in
   general, and is not enough to say anything about frequency (F-12).
+- That the exact solver is exact outside its stated conditions. It refuses
+  there, which is a different and weaker guarantee than being right there.
+- That the reference oracle is correct. It is *independent*, not authoritative.
+  Agreement between two implementations raises confidence; it does not prove
+  either one. The hand calculations remain the only external anchor.

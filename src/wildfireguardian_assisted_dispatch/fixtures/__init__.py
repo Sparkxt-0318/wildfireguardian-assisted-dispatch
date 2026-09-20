@@ -16,6 +16,9 @@ e       a temporary refuge only counts if it holds
 f       feasibility is not monotone in dispatch time
 g       a segment that cannot be cleared is never entered
 g_my    what entry-time-only hazard checking actually costs
+h_*     staging location changes the feasible set; nearer is not wider
+n       a feasible window narrower than the sweep step - the grid misses it
+n_res   the same window, sampled finely enough to see
 ======  ===========================================================
 """
 
@@ -26,9 +29,11 @@ from typing import Callable, Mapping
 from . import (
     corridor_conflict,
     mid_edge_closure,
+    narrow_window,
     non_monotonic,
     pickup_sensitivity,
     single_road,
+    staging,
     temporary_refuge,
     two_routes,
 )
@@ -45,6 +50,10 @@ FIXTURES: Mapping[str, Callable[[], Fixture]] = {
     "f": non_monotonic.build,
     "g": mid_edge_closure.build,
     "g_myopic": mid_edge_closure.build_myopic,
+    "h_north": staging.build_north,
+    "h_south": staging.build_south,
+    "n": narrow_window.build,
+    "n_resolved": narrow_window.build_resolved,
 }
 
 
@@ -75,4 +84,6 @@ __all__ = [
     "temporary_refuge",
     "non_monotonic",
     "mid_edge_closure",
+    "staging",
+    "narrow_window",
 ]

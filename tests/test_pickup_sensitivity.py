@@ -7,7 +7,7 @@ from wildfireguardian_assisted_dispatch.feasibility.sensitivity import (
 )
 from wildfireguardian_assisted_dispatch.fixtures import load
 from wildfireguardian_assisted_dispatch.fixtures.pickup_sensitivity import (
-    latest_dispatch_for,
+    last_feasible_instant_for,
 )
 from wildfireguardian_assisted_dispatch.service.pickup import (
     PICKUP_PROFILE_MINUTES,
@@ -25,8 +25,8 @@ def test_each_scenario_duration_shifts_the_deadline_one_for_one(minutes, expecte
     )
     feasible = sweep_dispatch_times(spec, fixture.ensemble,
                                     fixture.grid).feasible_set()
-    assert feasible.latest_dispatch() == float(expected)
-    assert latest_dispatch_for(minutes) == expected
+    assert feasible.dispatch_by_deadline() == float(expected)
+    assert last_feasible_instant_for(minutes) == expected
 
 
 def test_the_sensitivity_sweep_is_monotone_in_pickup_duration():

@@ -41,8 +41,13 @@ SCENARIO = HazardScenario(
 )
 
 
-def latest_dispatch_for(pickup_minutes: float) -> float:
-    """The hand formula: ``50 - 8 - p - 12``."""
+def last_feasible_instant_for(pickup_minutes: float) -> float:
+    """The hand formula: ``50 - 8 - p - 12``.
+
+    Here the feasible set really is a single window reaching t = 0, so this
+    value is also a dispatch-by deadline - but the name says what it is rather
+    than what it happens to license (D-019).
+    """
     return EGRESS_CLOSURE - INGRESS_MINUTES - pickup_minutes - EGRESS_MINUTES
 
 
@@ -55,7 +60,7 @@ def build(pickup_minutes: float = 5.0) -> Fixture:
         policy=MissionPolicy(horizon=150.0),
         name="D-pickup-sensitivity",
     )
-    latest = latest_dispatch_for(pickup_minutes)
+    latest = last_feasible_instant_for(pickup_minutes)
     return Fixture(
         key="d",
         title="pickup sensitivity",
@@ -73,6 +78,7 @@ def build(pickup_minutes: float = 5.0) -> Fixture:
             f"this instance uses p = {pickup_minutes:g} min  ->  t <= {latest:g}"
         ),
         expected_windows=((0.0, latest),) if latest >= 0 else (),
+        expected_exact_components=((0.0, latest),) if latest >= 0 else (),
         notes=(
             "The four durations are scenario parameters. They are not "
             "validated medical or triage categories and must never be "
@@ -81,4 +87,4 @@ def build(pickup_minutes: float = 5.0) -> Fixture:
     )
 
 
-__all__ = ["build", "network", "latest_dispatch_for", "SCENARIO"]
+__all__ = ["build", "network", "last_feasible_instant_for", "SCENARIO"]

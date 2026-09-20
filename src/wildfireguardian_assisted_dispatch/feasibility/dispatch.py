@@ -23,7 +23,8 @@ in general: a corridor that reopens, or a refuge that only opens later, can
 make a later dispatch succeed where an earlier one fails (fixture F).
 
 So :class:`FeasibleDispatchSet` reports the whole set, states plainly whether
-it is monotone, and refuses to produce ``latest_dispatch`` when it is not,
+it is a dispatch-by deadline, and refuses to produce that summary when it is
+not,
 unless the caller explicitly asks for the unsafe summary and accepts the
 attached warning.
 """
@@ -40,8 +41,15 @@ from ..missions.spec import MissionSpec
 from ..units import EPS, geq, quantize
 
 
-class NonMonotonicFeasibilityError(ValueError):
-    """Raised when a single latest-dispatch summary would misrepresent the set."""
+class DispatchByDeadlineUndefined(ValueError):
+    """Raised when the phrase "dispatch by X" would be a false statement.
+
+    "Dispatch by X" asserts that *every* dispatch time up to X works.  That is
+    only true when the feasible set is a single component reaching the start of
+    the studied range.  When it is not, the correct vocabulary is *feasible
+    dispatch set*, *feasible dispatch windows*, and *last feasible dispatch
+    instant* - see docs/GLOSSARY.md and docs/MATHEMATICAL_SPECIFICATION.md.
+    """
 
 
 def dispatch_grid(start: float, stop: float, step: float) -> tuple[float, ...]:
@@ -168,40 +176,68 @@ class FeasibleDispatchSet:
         points = self.points
         return points[-1] if points else None
 
-    def latest_dispatch(self, *, allow_non_monotonic: bool = False) -> float | None:
-        r"""The single latest dispatch time :math:`t^\dagger = \sup \mathcal{T}`.
+    @property
+    def last_feasible_instant(self) -> float | None:
+        r"""The largest sampled feasible dispatch time, :math:`\sup \mathcal{T}_q`.
 
-        Only meaningful when the feasible set is monotone on the studied grid.
-        Otherwise this raises, because reporting a lone number for a set with a
-        hole in it tells the dispatcher that every earlier time is fine when
-        some of them are not.  Pass ``allow_non_monotonic=True`` only when the
-        caller is going to print :attr:`warnings` alongside it.
+        This is **not** a deadline.  It is the last instant at which dispatch is
+        known to work; on its own it says nothing about whether earlier instants
+        work.  Use :meth:`dispatch_by_deadline` when the deadline reading is the
+        one you want, and let it refuse when that reading would be false.
         """
-        if not self.is_monotone and not allow_non_monotonic:
-            raise NonMonotonicFeasibilityError(
-                "feasible dispatch set is not monotone on this grid "
-                f"(feasible windows: {self.format_intervals()}; infeasible gaps: "
-                f"{self._fmt(self.gaps)}). A single latest dispatch time would "
-                "imply that every earlier dispatch also works, which is false "
-                "here. Report the set, or the individual windows."
+        return self.supremum
+
+    def dispatch_by_deadline(self) -> float | None:
+        r"""The value X for which "dispatch by X" is a true statement.
+
+        Defined only when the sampled feasible set is a single component that
+        reaches the start of the studied range - i.e. when every earlier
+        dispatch time in the range really is feasible.  Otherwise this raises: a
+        lone number attached to a set with a hole in it tells the reader that
+        everything before it works, which is exactly the false claim this
+        repository exists to prevent (docs/DECISIONS.md D-006).
+        """
+        if self.is_empty:
+            return None
+        if not self.is_prefix:
+            raise DispatchByDeadlineUndefined(
+                "'dispatch by X' is not a true statement for this feasible set "
+                f"(windows: {self.format_intervals()}; infeasible gaps: "
+                f"{self._fmt(self.gaps)}). Report the feasible dispatch windows, "
+                f"or the last feasible dispatch instant ({self.supremum:g}), and "
+                "say which you mean."
             )
         return self.supremum
 
     @property
     def warnings(self) -> tuple[str, ...]:
         out: list[str] = []
+        # This one is unconditional on purpose. Every grid result carries it.
+        out.append(
+            f"these windows are SAMPLED at {self.resolution:g} min; a feasible "
+            "window narrower than the step and lying between two samples is "
+            "invisible to this method (see fixture 'n' and "
+            "docs/TEMPORAL_RESOLUTION.md). Use the exact solver for a "
+            "discretization-free answer."
+        )
         if self.is_empty:
-            out.append("no sampled dispatch time meets the threshold")
+            out.append("no sampled dispatch time meets the threshold - which is "
+                       "NOT the same as the feasible set being empty")
         if not self.is_monotone:
             out.append(
                 "feasibility is NOT monotone in dispatch time: it is regained "
-                f"after being lost ({len(self.gaps)} gap(s): {self._fmt(self.gaps)}). "
-                "A single latest-dispatch summary is invalid here."
+                f"after being lost ({len(self.gaps)} gap(s): {self._fmt(self.gaps)})"
             )
         if self.flags and self.flags[-1]:
             out.append(
                 "the last sampled dispatch time is still feasible; the studied "
                 "range does not bracket the end of the feasible set"
+            )
+        if not self.is_prefix and not self.is_empty:
+            out.append(
+                "this is not a dispatch-by deadline: report 'feasible dispatch "
+                "windows' or 'last feasible dispatch instant', never 'dispatch "
+                "by X'"
             )
         return tuple(out)
 
@@ -214,17 +250,21 @@ class FeasibleDispatchSet:
 
     def describe(self) -> str:
         lines = [
-            f"feasible dispatch set at threshold q = {self.threshold:g} "
+            f"SAMPLED feasible dispatch set at threshold q = {self.threshold:g} "
             f"(grid resolution {self.resolution:g} min)",
             f"  windows : {self.format_intervals() if self.intervals else 'empty'}",
-            f"  monotone: {self.is_monotone}",
+            f"  sampled indicator is monotone: {self.is_monotone}",
         ]
-        if self.is_monotone and not self.is_empty:
-            lines.append(f"  t_dagger = sup T = {self.supremum:g} "
-                         "(meaningful: the set is monotone here)")
-        elif not self.is_empty:
-            lines.append(f"  sup T = {self.supremum:g} "
-                         "(NOT a valid latest-dispatch summary; see warnings)")
+        if not self.is_empty:
+            lines.append(f"  last feasible sampled dispatch instant: "
+                         f"{self.supremum:g}")
+            if self.is_prefix:
+                lines.append("  this set IS a dispatch-by deadline on the "
+                             "sampled grid: every earlier sampled dispatch "
+                             "time is feasible")
+            else:
+                lines.append("  this set is NOT a dispatch-by deadline; do not "
+                             "quote the instant above as one")
         for w in self.warnings:
             lines.append(f"  warning: {w}")
         return "\n".join(lines)
@@ -326,7 +366,7 @@ def p_success(spec: MissionSpec, dispatch_time: float,
 
 
 __all__ = [
-    "NonMonotonicFeasibilityError",
+    "DispatchByDeadlineUndefined",
     "dispatch_grid",
     "DispatchOutcome",
     "FeasibleDispatchSet",

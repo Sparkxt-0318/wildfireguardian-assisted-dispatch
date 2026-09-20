@@ -3,7 +3,7 @@
 import pytest
 
 from wildfireguardian_assisted_dispatch.feasibility.dispatch import (
-    NonMonotonicFeasibilityError,
+    DispatchByDeadlineUndefined,
 )
 from wildfireguardian_assisted_dispatch.feasibility.refine import refine_transitions
 from wildfireguardian_assisted_dispatch.fixtures import load
@@ -28,14 +28,14 @@ def test_a_later_dispatch_succeeds_where_an_earlier_one_fails(fixture):
     assert evaluate_mission(fixture.spec, 12.0, scenario).mission_success
 
 
-def test_latest_dispatch_refuses_to_summarise_a_set_with_a_hole(fixture):
+def test_dispatch_by_deadline_refuses_to_summarise_a_set_with_a_hole(fixture):
     feasible = fixture.feasible_set()
-    with pytest.raises(NonMonotonicFeasibilityError, match="not monotone"):
-        feasible.latest_dispatch()
+    with pytest.raises(DispatchByDeadlineUndefined, match="not a true statement"):
+        feasible.dispatch_by_deadline()
     # The supremum is still available, and still true as a statement about the
     # supremum - it is just not a latest-dispatch recommendation.
     assert feasible.supremum == 13.0
-    assert feasible.latest_dispatch(allow_non_monotonic=True) == 13.0
+    assert feasible.last_feasible_instant == 13.0
 
 
 def test_the_non_monotonicity_is_surfaced_as_a_warning(fixture):

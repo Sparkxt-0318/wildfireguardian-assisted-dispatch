@@ -85,11 +85,13 @@ def build() -> Fixture:
             "T = {0} U [11, 13]     sup T = 13, but T is NOT an interval"
         ),
         expected_windows=((0.0, 0.0), (11.0, 13.0)),
+        expected_exact_components=((0.0, 0.0), (11.0, 13.0)),
         expected_monotone=False,
         notes=(
-            "latest_dispatch() raises NonMonotonicFeasibilityError here, by "
-            "design. sup T = 13 is a true statement about the supremum and a "
-            "false statement about the set.",
+            "dispatch_by_deadline() raises DispatchByDeadlineUndefined here, "
+            "by design. The last feasible dispatch instant is 13: a true "
+            "statement about the supremum and, read as a deadline, a false "
+            "statement about the set.",
             "No waiting is involved in either feasible window. The responder "
             "drives continuously in both; only the phase of the corridor's "
             "timeline differs.",

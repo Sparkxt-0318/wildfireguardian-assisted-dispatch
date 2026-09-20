@@ -64,7 +64,9 @@ class MissionPolicy:
     allow_node_revisits: bool = False
     #: How many distinct resident-arrival times the evaluator will branch on.
     #: Arrival times are *not* dominated by earliness (a later arrival can be
-    #: the only feasible one), so the evaluator must try more than the first.
+    #: the only feasible one), so the evaluator must try more than the first -
+    #: and exceeding this budget raises ``ArrivalBranchBudgetExceeded`` rather
+    #: than quietly dropping the tail, which could hide a feasible mission.
     max_resident_arrivals: int = 64
 
     def __post_init__(self) -> None:

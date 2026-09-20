@@ -52,7 +52,7 @@ def test_a_full_config_builds_a_runnable_study():
     )
     result = sweep_dispatch_times(study.spec, study.ensemble, study.grid)
     # Same arithmetic as fixture A: 40 - 10 - 5 - 10.
-    assert result.feasible_set().latest_dispatch() == 15.0
+    assert result.feasible_set().dispatch_by_deadline() == 15.0
 
 
 def test_unknown_keys_are_errors_not_warnings():

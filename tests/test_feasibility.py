@@ -34,7 +34,7 @@ def test_intervals_gaps_and_monotonicity():
 def test_a_prefix_set_is_a_genuine_deadline():
     s = make_set([True, True, True, False, False])
     assert s.is_monotone and s.is_prefix
-    assert s.latest_dispatch() == 2.0
+    assert s.dispatch_by_deadline() == 2.0
 
 
 def test_an_empty_set_warns_and_has_no_supremum():

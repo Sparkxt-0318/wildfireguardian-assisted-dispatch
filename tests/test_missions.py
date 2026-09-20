@@ -140,3 +140,21 @@ def test_results_serialise_to_flat_rows():
         "dispatch_time", "resident_arrival_time", "pickup_start", "pickup_end",
         "destination_arrival", "mission_success", "failure_reason",
     }
+
+
+def test_branching_over_arrival_times_refuses_to_truncate():
+    """A silent cap here would hide feasible missions, exactly as a truncated
+    state search would (D-013)."""
+    from wildfireguardian_assisted_dispatch.missions.evaluator import (
+        ArrivalBranchBudgetExceeded,
+    )
+
+    spec = simple_spec(allow_node_revisits=True, max_resident_arrivals=2)
+    with pytest.raises(ArrivalBranchBudgetExceeded, match="could hide a feasible"):
+        evaluate_mission(spec, 0.0, HazardScenario("clear"))
+
+
+def test_the_default_branch_budget_is_ample_for_simple_paths():
+    """With revisits prohibited the cap never binds on these networks."""
+    result = evaluate_mission(simple_spec(), 0.0, HazardScenario("clear"))
+    assert result.mission_success
